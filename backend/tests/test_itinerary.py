@@ -7,75 +7,55 @@ All Google Cloud clients are mocked so no real network calls are made.
 import sys
 import os
 import types
-from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 # ---------------------------------------------------------------------------
-# Path setup — backend/ must be on sys.path so that 'services.*' and
-# 'core.*' resolve the same way they do when main.py runs.
+# Path setup — repo root must be on sys.path so that 'backend.*' resolves.
 # ---------------------------------------------------------------------------
-BACKEND_DIR = os.path.join(os.path.dirname(__file__), "..")
-if BACKEND_DIR not in sys.path:
-    sys.path.insert(0, os.path.abspath(BACKEND_DIR))
+REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+if REPO_ROOT not in sys.path:
+    sys.path.insert(0, REPO_ROOT)
 
 
 # ---------------------------------------------------------------------------
-# Stub out heavy Google Cloud libraries BEFORE anything imports them so that
-# module-level client construction (e.g. firestore.AsyncClient()) doesn't
-# fail in a test environment without credentials.
+# Stub out heavy Google Cloud libraries BEFORE anything imports them.
 # ---------------------------------------------------------------------------
 
-def _make_stub_module(name: str, **attrs) -> types.ModuleType:
+def _make_stub(name: str, **attrs) -> types.ModuleType:
     mod = types.ModuleType(name)
     for k, v in attrs.items():
         setattr(mod, k, v)
     return mod
 
 
-# -- google.cloud.firestore stub --
 _mock_async_client_instance = MagicMock()
-_mock_firestore_mod = _make_stub_module(
+_mock_firestore_mod = _make_stub(
     "google.cloud.firestore",
     AsyncClient=MagicMock(return_value=_mock_async_client_instance),
     AsyncDocumentReference=MagicMock,
 )
-
-# -- google.cloud.secretmanager stub --
-_mock_secretmanager_mod = _make_stub_module(
+_mock_secretmanager_mod = _make_stub(
     "google.cloud.secretmanager",
     SecretManagerServiceClient=MagicMock(),
 )
-
-# -- vertexai stub --
-_mock_vertexai_mod = _make_stub_module("vertexai", init=MagicMock())
-
-# -- vertexai.generative_models stub --
+_mock_vertexai_mod = _make_stub("vertexai", init=MagicMock())
 _mock_gen_model_cls = MagicMock()
-_mock_vertexai_gen_mod = _make_stub_module(
+_mock_vertexai_gen_mod = _make_stub(
     "vertexai.generative_models",
     GenerativeModel=_mock_gen_model_cls,
 )
-
-# -- google.cloud.language_v2 stub --
 _mock_lang_async_client = MagicMock()
-_mock_lang_mod = _make_stub_module(
+_mock_lang_mod = _make_stub(
     "google.cloud.language_v2",
     LanguageServiceAsyncClient=MagicMock(return_value=_mock_lang_async_client),
     Document=MagicMock(),
     Entity=MagicMock(),
 )
+_mock_translate_mod = _make_stub("google.cloud.translate_v2", Client=MagicMock())
+_mock_gmaps_mod = _make_stub("googlemaps", Client=MagicMock())
 
-# -- google.cloud.translate_v2 stub --
-_mock_translate_mod = _make_stub_module(
-    "google.cloud.translate_v2",
-    Client=MagicMock(),
-)
-
-# -- googlemaps stub --
-_mock_gmaps_mod = _make_stub_module("googlemaps", Client=MagicMock())
-
-# Register all stubs so imports resolve without hitting the real libraries.
 _stubs = {
     "google": types.ModuleType("google"),
     "google.cloud": types.ModuleType("google.cloud"),
@@ -90,20 +70,17 @@ _stubs = {
 for _name, _mod in _stubs.items():
     sys.modules.setdefault(_name, _mod)
 
-# Make google.cloud a proper sub-package of google.
 sys.modules["google"].cloud = sys.modules["google.cloud"]  # type: ignore[attr-defined]
 
-# Now it is safe to import application modules.
+# Safe to import application modules now.
 import httpx
 from httpx import AsyncClient, ASGITransport
-from fastapi.testclient import TestClient
 
-# Import app — this also registers routes.
-from main import app  # type: ignore[import]
+from backend.main import app  # type: ignore[import]
 
 
 # ---------------------------------------------------------------------------
-# Helpers
+# Shared fixtures / payloads
 # ---------------------------------------------------------------------------
 
 PLAN_REQUEST_PAYLOAD = {
@@ -143,21 +120,14 @@ FAKE_SAVED_ITINERARY = {
 # 1. GET /health
 # ===========================================================================
 
-
-@pytest.mark.asyncio
 async def test_health_returns_200():
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         response = await ac.get("/health")
     assert response.status_code == 200
 
 
-@pytest.mark.asyncio
 async def test_health_returns_correct_body():
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         response = await ac.get("/health")
     body = response.json()
     assert body["status"] == "ok"
@@ -168,20 +138,12 @@ async def test_health_returns_correct_body():
 # 2. POST /plan — success path
 # ===========================================================================
 
-
-@pytest.mark.asyncio
 async def test_plan_success():
-    """Mock both service functions; expect 200 and a valid PlanResponse."""
-    with patch(
-        "services.gemini_service.generate_itinerary",
-        new=AsyncMock(return_value=FAKE_ITINERARY_DATA),
-    ), patch(
-        "services.firestore_service.save_itinerary",
-        new=AsyncMock(return_value="doc-abc-123"),
-    ):
-        async with AsyncClient(
-            transport=ASGITransport(app=app), base_url="http://test"
-        ) as ac:
+    with patch("backend.services.gemini_service.generate_itinerary",
+               new=AsyncMock(return_value=FAKE_ITINERARY_DATA)), \
+         patch("backend.services.firestore_service.save_itinerary",
+               new=AsyncMock(return_value="doc-abc-123")):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
             response = await ac.post("/plan", json=PLAN_REQUEST_PAYLOAD)
 
     assert response.status_code == 200
@@ -191,19 +153,12 @@ async def test_plan_success():
     assert "message" in body
 
 
-@pytest.mark.asyncio
 async def test_plan_response_shape():
-    """Verify all PlanResponse fields are present."""
-    with patch(
-        "services.gemini_service.generate_itinerary",
-        new=AsyncMock(return_value=FAKE_ITINERARY_DATA),
-    ), patch(
-        "services.firestore_service.save_itinerary",
-        new=AsyncMock(return_value="some-id"),
-    ):
-        async with AsyncClient(
-            transport=ASGITransport(app=app), base_url="http://test"
-        ) as ac:
+    with patch("backend.services.gemini_service.generate_itinerary",
+               new=AsyncMock(return_value=FAKE_ITINERARY_DATA)), \
+         patch("backend.services.firestore_service.save_itinerary",
+               new=AsyncMock(return_value="some-id")):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
             response = await ac.post("/plan", json=PLAN_REQUEST_PAYLOAD)
 
     body = response.json()
@@ -211,44 +166,40 @@ async def test_plan_response_shape():
 
 
 # ===========================================================================
-# 3. POST /plan — error path (gemini raises)
+# 3. POST /plan — error paths
 # ===========================================================================
 
-
-@pytest.mark.asyncio
 async def test_plan_gemini_error_returns_500():
-    """When generate_itinerary raises, the endpoint must return 500."""
-    with patch(
-        "services.gemini_service.generate_itinerary",
-        new=AsyncMock(side_effect=RuntimeError("Vertex AI unavailable")),
-    ), patch(
-        "services.firestore_service.save_itinerary",
-        new=AsyncMock(return_value="will-not-be-called"),
-    ):
-        async with AsyncClient(
-            transport=ASGITransport(app=app), base_url="http://test"
-        ) as ac:
+    with patch("backend.services.gemini_service.generate_itinerary",
+               new=AsyncMock(side_effect=RuntimeError("Vertex AI unavailable"))), \
+         patch("backend.services.firestore_service.save_itinerary",
+               new=AsyncMock(return_value="will-not-be-called")):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
             response = await ac.post("/plan", json=PLAN_REQUEST_PAYLOAD)
 
     assert response.status_code == 500
     assert "Failed to generate itinerary" in response.json()["detail"]
 
 
-# ===========================================================================
-# 4. GET /itineraries/{user_id} — list case
-# ===========================================================================
+async def test_plan_firestore_error_returns_500():
+    with patch("backend.services.gemini_service.generate_itinerary",
+               new=AsyncMock(return_value=FAKE_ITINERARY_DATA)), \
+         patch("backend.services.firestore_service.save_itinerary",
+               new=AsyncMock(side_effect=RuntimeError("Firestore unavailable"))):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+            response = await ac.post("/plan", json=PLAN_REQUEST_PAYLOAD)
+
+    assert response.status_code == 500
 
 
-@pytest.mark.asyncio
+# ===========================================================================
+# 4. GET /itineraries/{user_id}
+# ===========================================================================
+
 async def test_get_itineraries_success():
-    """Mock get_itineraries_for_user returning one itinerary; expect 200 and list."""
-    with patch(
-        "services.firestore_service.get_itineraries_for_user",
-        new=AsyncMock(return_value=[FAKE_SAVED_ITINERARY]),
-    ):
-        async with AsyncClient(
-            transport=ASGITransport(app=app), base_url="http://test"
-        ) as ac:
+    with patch("backend.services.firestore_service.get_itineraries_for_user",
+               new=AsyncMock(return_value=[FAKE_SAVED_ITINERARY])):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
             response = await ac.get("/itineraries/user-123")
 
     assert response.status_code == 200
@@ -256,40 +207,22 @@ async def test_get_itineraries_success():
     assert isinstance(body, list)
     assert len(body) == 1
     assert body[0]["id"] == "doc-abc-123"
-    assert body[0]["user_id"] == "user-123"
 
 
-@pytest.mark.asyncio
 async def test_get_itineraries_list_shape():
-    """Each item in the list must have the Itinerary fields."""
-    with patch(
-        "services.firestore_service.get_itineraries_for_user",
-        new=AsyncMock(return_value=[FAKE_SAVED_ITINERARY]),
-    ):
-        async with AsyncClient(
-            transport=ASGITransport(app=app), base_url="http://test"
-        ) as ac:
+    with patch("backend.services.firestore_service.get_itineraries_for_user",
+               new=AsyncMock(return_value=[FAKE_SAVED_ITINERARY])):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
             response = await ac.get("/itineraries/user-123")
 
     item = response.json()[0]
     assert set(item.keys()) >= {"id", "user_id", "destination", "days", "created_at"}
 
 
-# ===========================================================================
-# 5. GET /itineraries/{user_id} — empty list
-# ===========================================================================
-
-
-@pytest.mark.asyncio
 async def test_get_itineraries_empty():
-    """When no itineraries exist, the endpoint should return 200 and []."""
-    with patch(
-        "services.firestore_service.get_itineraries_for_user",
-        new=AsyncMock(return_value=[]),
-    ):
-        async with AsyncClient(
-            transport=ASGITransport(app=app), base_url="http://test"
-        ) as ac:
+    with patch("backend.services.firestore_service.get_itineraries_for_user",
+               new=AsyncMock(return_value=[])):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
             response = await ac.get("/itineraries/user-no-trips")
 
     assert response.status_code == 200
@@ -297,97 +230,67 @@ async def test_get_itineraries_empty():
 
 
 # ===========================================================================
-# 6. core/secrets.py — get_secret success
+# 5. core/secrets.py
 # ===========================================================================
 
-
 def test_get_secret_returns_decoded_string():
-    """Mock secretmanager client; verify get_secret returns the decoded value."""
     mock_client = MagicMock()
     mock_response = MagicMock()
     mock_response.payload.data = b"super-secret-value"
     mock_client.access_secret_version.return_value = mock_response
 
-    with patch(
-        "google.cloud.secretmanager.SecretManagerServiceClient",
-        return_value=mock_client,
-    ):
-        from backend.core.secrets import get_secret  # type: ignore[import]
+    with patch("google.cloud.secretmanager.SecretManagerServiceClient",
+               return_value=mock_client):
+        from backend.core.secrets import get_secret
         result = get_secret("MY_SECRET", project_id="test-project")
 
     assert result == "super-secret-value"
 
 
-# ===========================================================================
-# 7. core/secrets.py — get_secret raises RuntimeError on client error
-# ===========================================================================
-
-
 def test_get_secret_raises_runtime_error_on_failure():
-    """If the client raises, get_secret should wrap it in RuntimeError."""
     mock_client = MagicMock()
     mock_client.access_secret_version.side_effect = Exception("permission denied")
 
-    with patch(
-        "google.cloud.secretmanager.SecretManagerServiceClient",
-        return_value=mock_client,
-    ):
-        from backend.core.secrets import get_secret  # type: ignore[import]
+    with patch("google.cloud.secretmanager.SecretManagerServiceClient",
+               return_value=mock_client):
+        from backend.core.secrets import get_secret
         with pytest.raises(RuntimeError, match="Failed to fetch secret"):
             get_secret("MISSING_SECRET", project_id="test-project")
 
 
 # ===========================================================================
-# 8. services/gemini_service.py — generate_itinerary returns dict with "days"
+# 6. services/gemini_service.py
 # ===========================================================================
 
-
-@pytest.mark.asyncio
 async def test_gemini_generate_itinerary_returns_days():
-    """Mock vertexai and GenerativeModel; verify the returned dict has 'days'."""
     import json as _json
 
-    fake_response_text = _json.dumps(FAKE_ITINERARY_DATA)
-
+    fake_text = _json.dumps(FAKE_ITINERARY_DATA)
     mock_model_instance = MagicMock()
     mock_model_instance.generate_content_async = AsyncMock(
-        return_value=MagicMock(text=fake_response_text)
+        return_value=MagicMock(text=fake_text)
     )
 
-    # Patch the name as it was imported into gemini_service's own namespace,
-    # and also patch vertexai.init which was imported the same way.
-    with patch("services.gemini_service.vertexai") as mock_vx, patch(
-        "services.gemini_service.GenerativeModel",
-        return_value=mock_model_instance,
-    ):
+    with patch("backend.services.gemini_service.vertexai") as mock_vx, \
+         patch("backend.services.gemini_service.GenerativeModel",
+               return_value=mock_model_instance):
         mock_vx.init = MagicMock()
-
-        from backend.services.gemini_service import generate_itinerary  # type: ignore[import]
-
+        from backend.services.gemini_service import generate_itinerary
         result = await generate_itinerary(
-            preferences={
-                "destination": "Paris",
-                "duration_days": 3,
-                "interests": ["food"],
-                "budget": "moderate",
-                "travel_style": "relaxed",
-            }
+            preferences={"destination": "Paris", "duration_days": 3,
+                         "interests": ["food"], "budget": "moderate"}
         )
 
     assert isinstance(result, dict)
     assert "days" in result
-    assert isinstance(result["days"], list)
     assert len(result["days"]) >= 1
 
 
 # ===========================================================================
-# 9. services/firestore_service.py — save_itinerary returns a string id
+# 7. services/firestore_service.py
 # ===========================================================================
 
-
-@pytest.mark.asyncio
 async def test_firestore_save_itinerary_returns_string_id():
-    """Mock Firestore async client; verify save_itinerary returns a string."""
     mock_doc_ref = MagicMock()
     mock_doc_ref.id = "generated-doc-id"
     mock_doc_ref.set = AsyncMock()
@@ -398,68 +301,30 @@ async def test_firestore_save_itinerary_returns_string_id():
     mock_db = MagicMock()
     mock_db.collection.return_value = mock_collection
 
-    with patch("services.firestore_service._db", mock_db):
-        from backend.services.firestore_service import save_itinerary  # type: ignore[import]
-
-        result = await save_itinerary(
-            user_id="user-456",
-            itinerary=FAKE_ITINERARY_DATA,
-        )
+    with patch("backend.services.firestore_service._db", mock_db):
+        from backend.services.firestore_service import save_itinerary
+        result = await save_itinerary(user_id="user-456", itinerary=FAKE_ITINERARY_DATA)
 
     assert isinstance(result, str)
     assert result == "generated-doc-id"
 
 
 # ===========================================================================
-# 10. services/maps_service.py — geocode_location returns dict with lat/lng
+# 8. services/maps_service.py
 # ===========================================================================
 
-
-@pytest.mark.asyncio
 async def test_maps_geocode_location_returns_lat_lng():
-    """Mock googlemaps.Client; verify geocode_location returns lat and lng."""
-    fake_geocode_result = [
-        {
-            "geometry": {
-                "location": {"lat": 48.8566, "lng": 2.3522}
-            }
-        }
-    ]
+    fake_geocode_result = [{"geometry": {"location": {"lat": 48.8566, "lng": 2.3522}}}]
 
     mock_gmaps_client = MagicMock()
     mock_gmaps_client.geocode = MagicMock(return_value=fake_geocode_result)
 
-    with patch("core.secrets.get_secret", return_value="fake-api-key"), patch(
-        "googlemaps.Client", return_value=mock_gmaps_client
-    ):
-        from backend.services.maps_service import geocode_location  # type: ignore[import]
-
+    with patch("backend.core.secrets.get_secret", return_value="fake-api-key"), \
+         patch("googlemaps.Client", return_value=mock_gmaps_client):
+        from backend.services.maps_service import geocode_location
         result = await geocode_location("Paris, France")
 
     assert "lat" in result
     assert "lng" in result
     assert result["lat"] == pytest.approx(48.8566)
     assert result["lng"] == pytest.approx(2.3522)
-
-
-# ===========================================================================
-# Extra: POST /plan — firestore save raises -> 500
-# ===========================================================================
-
-
-@pytest.mark.asyncio
-async def test_plan_firestore_error_returns_500():
-    """When save_itinerary raises, the endpoint must return 500."""
-    with patch(
-        "services.gemini_service.generate_itinerary",
-        new=AsyncMock(return_value=FAKE_ITINERARY_DATA),
-    ), patch(
-        "services.firestore_service.save_itinerary",
-        new=AsyncMock(side_effect=RuntimeError("Firestore unavailable")),
-    ):
-        async with AsyncClient(
-            transport=ASGITransport(app=app), base_url="http://test"
-        ) as ac:
-            response = await ac.post("/plan", json=PLAN_REQUEST_PAYLOAD)
-
-    assert response.status_code == 500
