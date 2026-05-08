@@ -1,5 +1,6 @@
 """Travel Planner FastAPI application entry point."""
 
+import logging
 import os
 
 import uvicorn
@@ -8,6 +9,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s — %(message)s",
+)
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -96,6 +103,8 @@ async def plan_trip(request: PlanRequest) -> PlanResponse:
         from backend.services.gemini_service import generate_itinerary  # type: ignore[import]
         from backend.services.firestore_service import save_itinerary  # type: ignore[import]
 
+        logger.info("Generating itinerary for user=%s dest=%s",
+                    request.user_id, request.preferences.destination)
         itinerary_data: dict = await generate_itinerary(
             preferences=request.preferences.model_dump(),
         )
@@ -103,6 +112,7 @@ async def plan_trip(request: PlanRequest) -> PlanResponse:
             user_id=request.user_id,
             itinerary=itinerary_data,
         )
+        logger.info("Itinerary saved id=%s", itinerary_id)
         return PlanResponse(
             itinerary_id=itinerary_id,
             status="success",

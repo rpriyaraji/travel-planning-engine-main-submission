@@ -328,3 +328,101 @@ async def test_maps_geocode_location_returns_lat_lng():
     assert "lng" in result
     assert result["lat"] == pytest.approx(48.8566)
     assert result["lng"] == pytest.approx(2.3522)
+
+
+# ===========================================================================
+# 9. services/nlp_service.py — sentiment analysis
+# ===========================================================================
+
+async def test_nlp_analyze_sentiment_positive():
+    mock_sentiment = MagicMock()
+    mock_sentiment.score = 0.8
+    mock_sentiment.magnitude = 0.9
+
+    mock_response = MagicMock()
+    mock_response.document_sentiment = mock_sentiment
+
+    mock_nlp_client = MagicMock()
+    mock_nlp_client.analyze_sentiment = AsyncMock(return_value=mock_response)
+
+    with patch("backend.services.nlp_service._nlp_client", mock_nlp_client):
+        from backend.services.nlp_service import analyze_sentiment
+        result = await analyze_sentiment("I love travelling to Paris!")
+
+    assert result["label"] == "positive"
+    assert result["score"] == pytest.approx(0.8)
+    assert result["magnitude"] == pytest.approx(0.9)
+
+
+async def test_nlp_analyze_sentiment_negative():
+    mock_sentiment = MagicMock()
+    mock_sentiment.score = -0.6
+    mock_sentiment.magnitude = 0.7
+
+    mock_response = MagicMock()
+    mock_response.document_sentiment = mock_sentiment
+
+    mock_nlp_client = MagicMock()
+    mock_nlp_client.analyze_sentiment = AsyncMock(return_value=mock_response)
+
+    with patch("backend.services.nlp_service._nlp_client", mock_nlp_client):
+        from backend.services.nlp_service import analyze_sentiment
+        result = await analyze_sentiment("Terrible weather ruined my trip.")
+
+    assert result["label"] == "negative"
+
+
+async def test_nlp_extract_entities_returns_list():
+    mock_entity = MagicMock()
+    mock_entity.name = "Paris"
+    mock_entity.type_ = 2  # LOCATION
+    mock_entity.salience = 0.95
+
+    mock_response = MagicMock()
+    mock_response.entities = [mock_entity]
+
+    mock_nlp_client = MagicMock()
+    mock_nlp_client.analyze_entities = AsyncMock(return_value=mock_response)
+
+    with patch("backend.services.nlp_service._nlp_client", mock_nlp_client), \
+         patch("google.cloud.language_v2.Entity.Type") as mock_type:
+        mock_type.return_value.name = "LOCATION"
+        from backend.services.nlp_service import extract_entities
+        result = await extract_entities("I want to visit Paris in France.")
+
+    assert isinstance(result, list)
+    assert len(result) == 1
+    assert result[0]["name"] == "Paris"
+    assert result[0]["salience"] == pytest.approx(0.95)
+
+
+# ===========================================================================
+# 10. services/translation_service.py
+# ===========================================================================
+
+async def test_translation_detect_language():
+    mock_translate_client = MagicMock()
+    mock_translate_client.detect_language = MagicMock(
+        return_value={"language": "fr", "confidence": 0.99}
+    )
+
+    with patch("backend.core.secrets.get_secret", return_value="fake-key"), \
+         patch("google.cloud.translate_v2.Client", return_value=mock_translate_client):
+        from backend.services.translation_service import detect_language
+        result = await detect_language("Bonjour le monde")
+
+    assert result == "fr"
+
+
+async def test_translation_translate_text():
+    mock_translate_client = MagicMock()
+    mock_translate_client.translate = MagicMock(
+        return_value={"translatedText": "Hello world", "detectedSourceLanguage": "fr"}
+    )
+
+    with patch("backend.core.secrets.get_secret", return_value="fake-key"), \
+         patch("google.cloud.translate_v2.Client", return_value=mock_translate_client):
+        from backend.services.translation_service import translate_text
+        result = await translate_text("Bonjour le monde", target_language="en")
+
+    assert result == "Hello world"
