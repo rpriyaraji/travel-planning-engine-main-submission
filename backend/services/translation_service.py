@@ -4,7 +4,7 @@ import asyncio
 
 from google.cloud import translate_v2 as translate
 
-from core.secrets import get_secret
+from backend.core.secrets import get_secret
 
 
 def _get_client() -> translate.Client:

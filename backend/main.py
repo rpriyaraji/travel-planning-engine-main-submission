@@ -93,8 +93,8 @@ async def plan_trip(request: PlanRequest) -> PlanResponse:
     """
     try:
         # Lazy imports to avoid circular dependencies
-        from services.gemini_service import generate_itinerary  # type: ignore[import]
-        from services.firestore_service import save_itinerary  # type: ignore[import]
+        from backend.services.gemini_service import generate_itinerary  # type: ignore[import]
+        from backend.services.firestore_service import save_itinerary  # type: ignore[import]
 
         itinerary_data: dict = await generate_itinerary(
             preferences=request.preferences.model_dump(),
@@ -132,7 +132,7 @@ async def get_itineraries(user_id: str) -> list[Itinerary]:
     """
     try:
         # Lazy import to avoid circular dependencies
-        from services.firestore_service import get_itineraries_for_user  # type: ignore[import]
+        from backend.services.firestore_service import get_itineraries_for_user  # type: ignore[import]
 
         raw_itineraries: list[dict] = await get_itineraries_for_user(
             user_id=user_id

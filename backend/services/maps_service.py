@@ -5,7 +5,7 @@ from typing import Any
 
 import googlemaps
 
-from core.secrets import get_secret
+from backend.core.secrets import get_secret
 
 
 def _get_client() -> googlemaps.Client:

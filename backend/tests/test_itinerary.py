@@ -312,7 +312,7 @@ def test_get_secret_returns_decoded_string():
         "google.cloud.secretmanager.SecretManagerServiceClient",
         return_value=mock_client,
     ):
-        from core.secrets import get_secret  # type: ignore[import]
+        from backend.core.secrets import get_secret  # type: ignore[import]
         result = get_secret("MY_SECRET", project_id="test-project")
 
     assert result == "super-secret-value"
@@ -332,7 +332,7 @@ def test_get_secret_raises_runtime_error_on_failure():
         "google.cloud.secretmanager.SecretManagerServiceClient",
         return_value=mock_client,
     ):
-        from core.secrets import get_secret  # type: ignore[import]
+        from backend.core.secrets import get_secret  # type: ignore[import]
         with pytest.raises(RuntimeError, match="Failed to fetch secret"):
             get_secret("MISSING_SECRET", project_id="test-project")
 
@@ -362,7 +362,7 @@ async def test_gemini_generate_itinerary_returns_days():
     ):
         mock_vx.init = MagicMock()
 
-        from services.gemini_service import generate_itinerary  # type: ignore[import]
+        from backend.services.gemini_service import generate_itinerary  # type: ignore[import]
 
         result = await generate_itinerary(
             preferences={
@@ -399,7 +399,7 @@ async def test_firestore_save_itinerary_returns_string_id():
     mock_db.collection.return_value = mock_collection
 
     with patch("services.firestore_service._db", mock_db):
-        from services.firestore_service import save_itinerary  # type: ignore[import]
+        from backend.services.firestore_service import save_itinerary  # type: ignore[import]
 
         result = await save_itinerary(
             user_id="user-456",
@@ -432,7 +432,7 @@ async def test_maps_geocode_location_returns_lat_lng():
     with patch("core.secrets.get_secret", return_value="fake-api-key"), patch(
         "googlemaps.Client", return_value=mock_gmaps_client
     ):
-        from services.maps_service import geocode_location  # type: ignore[import]
+        from backend.services.maps_service import geocode_location  # type: ignore[import]
 
         result = await geocode_location("Paris, France")
 
