@@ -62,6 +62,8 @@ async def get_user_itineraries(user_id: str) -> list[dict[str, Any]]:
         async for doc in docs:
             data: dict[str, Any] = doc.to_dict()
             data["id"] = doc.id
+            if "created_at" in data and not isinstance(data["created_at"], str):
+                data["created_at"] = str(data["created_at"])
             results.append(data)
         return results
     except Exception as exc:
@@ -96,6 +98,8 @@ async def get_itinerary(itinerary_id: str) -> dict[str, Any] | None:
             return None
         data: dict[str, Any] = doc.to_dict()
         data["id"] = doc.id
+        if "created_at" in data and not isinstance(data["created_at"], str):
+            data["created_at"] = str(data["created_at"])
         return data
     except Exception as exc:
         raise RuntimeError(
