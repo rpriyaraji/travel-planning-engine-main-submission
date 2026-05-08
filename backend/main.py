@@ -1,8 +1,12 @@
 """Travel Planner FastAPI application entry point."""
 
+import os
+
 import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 
@@ -142,6 +146,21 @@ async def get_itineraries(user_id: str) -> list[Itinerary]:
             status_code=500,
             detail=f"Failed to fetch itineraries for user '{user_id}': {exc}",
         ) from exc
+
+
+# ---------------------------------------------------------------------------
+# Serve React frontend (must be last — catches all unmatched routes)
+# ---------------------------------------------------------------------------
+
+FRONTEND_BUILD = os.path.join(os.path.dirname(__file__), "..", "frontend", "build")
+
+if os.path.isdir(FRONTEND_BUILD):
+    app.mount("/static", StaticFiles(directory=os.path.join(FRONTEND_BUILD, "static")), name="static")
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def serve_frontend(full_path: str) -> FileResponse:
+        index = os.path.join(FRONTEND_BUILD, "index.html")
+        return FileResponse(index)
 
 
 # ---------------------------------------------------------------------------
