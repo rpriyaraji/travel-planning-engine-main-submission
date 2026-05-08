@@ -10,7 +10,7 @@ from vertexai.generative_models import GenerativeModel
 
 async def generate_itinerary(
     preferences: dict[str, Any],
-    project_id: str = "YOUR_PROJECT_ID",
+    project_id: str = "promptwars-rr",
     location: str = "us-central1",
 ) -> dict[str, Any]:
     """Generate a structured day-by-day travel itinerary using Gemini 1.5 Pro.

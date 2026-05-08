@@ -148,10 +148,10 @@ gcloud builds submit --config cloudbuild.yaml \
 
 ### Cloud Run (manual)
 ```bash
-docker build -t gcr.io/YOUR_PROJECT_ID/travel-planner .
-docker push gcr.io/YOUR_PROJECT_ID/travel-planner
+docker build -t gcr.io/promptwars-rr/travel-planner .
+docker push gcr.io/promptwars-rr/travel-planner
 gcloud run deploy travel-planner \
-  --image gcr.io/YOUR_PROJECT_ID/travel-planner \
+  --image gcr.io/promptwars-rr/travel-planner \
   --region us-central1 \
   --platform managed \
   --allow-unauthenticated \
@@ -171,7 +171,7 @@ REACT_APP_FIREBASE_AUTH_DOMAIN=
 REACT_APP_FIREBASE_PROJECT_ID=
 ```
 
-Replace `YOUR_PROJECT_ID` in `backend/main.py` and `cloudbuild.yaml` with your GCP project ID.
+GCP project ID: `promptwars-rr` (already set in backend code and CI/CD config).
 
 ---
 

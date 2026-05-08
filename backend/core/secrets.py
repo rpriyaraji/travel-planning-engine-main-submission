@@ -3,7 +3,7 @@
 from google.cloud import secretmanager
 
 
-def get_secret(secret_id: str, project_id: str = "YOUR_PROJECT_ID") -> str:
+def get_secret(secret_id: str, project_id: str = "promptwars-rr") -> str:
     """Fetch the latest version of a secret from Google Secret Manager.
 
     Args:

@@ -2,7 +2,7 @@
 
 ## Project
 FastAPI + React travel planner on Cloud Run using 19 Google services.
-GCP Project: YOUR_PROJECT_ID | Region: us-central1
+GCP Project: promptwars-rr | Region: us-central1
 
 ## Stack
 - Backend: Python 3.11 / FastAPI / uvicorn
