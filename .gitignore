@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+.venv/
+venv/
+.env
+dist/
+build/
+
+# pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node / React
+frontend/node_modules/
+frontend/build/
+frontend/.env
+npm-debug.log*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude Code internals (not part of submission)
+.claude/
+
+# Docker
+*.tar

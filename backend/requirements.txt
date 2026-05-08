@@ -1,0 +1,15 @@
+fastapi
+uvicorn[standard]
+pydantic>=2.0
+google-cloud-secret-manager
+google-cloud-aiplatform
+google-cloud-firestore
+google-cloud-storage
+google-cloud-language
+google-cloud-translate
+googlemaps
+firebase-admin
+pytest
+pytest-asyncio
+httpx
+python-dotenv

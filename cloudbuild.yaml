@@ -1,0 +1,80 @@
+################################################################################
+# Cloud Build pipeline — test → build → push → deploy
+#
+# Trigger this manually or via a Cloud Build trigger connected to the repo.
+# Required IAM roles on the Cloud Build service account:
+#   - Cloud Run Admin
+#   - Storage Admin  (to push to GCR)
+#   - Service Account User
+################################################################################
+
+substitutions:
+  _REGION: us-central1
+
+steps:
+  # ---------------------------------------------------------------------------
+  # Step 1 — Run backend tests
+  # ---------------------------------------------------------------------------
+  - name: python:3.11
+    id: test
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        pip install --no-cache-dir -r backend/requirements.txt && \
+        python -m pytest backend/tests/ -v --tb=short
+
+  # ---------------------------------------------------------------------------
+  # Step 2 — Build the Docker image (multi-stage: frontend + backend)
+  # ---------------------------------------------------------------------------
+  - name: gcr.io/cloud-builders/docker
+    id: build
+    waitFor:
+      - test
+    args:
+      - build
+      - -t
+      - gcr.io/$PROJECT_ID/travel-planner:$COMMIT_SHA
+      - -t
+      - gcr.io/$PROJECT_ID/travel-planner:latest
+      - .
+
+  # ---------------------------------------------------------------------------
+  # Step 3 — Push the image to Google Container Registry
+  # ---------------------------------------------------------------------------
+  - name: gcr.io/cloud-builders/docker
+    id: push
+    waitFor:
+      - build
+    args:
+      - push
+      - --all-tags
+      - gcr.io/$PROJECT_ID/travel-planner
+
+  # ---------------------------------------------------------------------------
+  # Step 4 — Deploy to Cloud Run
+  # ---------------------------------------------------------------------------
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    id: deploy
+    waitFor:
+      - push
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - travel-planner
+      - --image=gcr.io/$PROJECT_ID/travel-planner:$COMMIT_SHA
+      - --region=$_REGION
+      - --platform=managed
+      - --allow-unauthenticated
+      - --min-instances=0
+      - --max-instances=3
+      - --memory=512Mi
+      - --port=8080
+
+images:
+  - gcr.io/$PROJECT_ID/travel-planner:$COMMIT_SHA
+  - gcr.io/$PROJECT_ID/travel-planner:latest
+
+options:
+  logging: CLOUD_LOGGING_ONLY

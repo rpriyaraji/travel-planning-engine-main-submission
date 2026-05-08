@@ -1,0 +1,50 @@
+# Version control
+.git
+.gitignore
+
+# Python bytecode and caches
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache
+
+# Python packaging artefacts
+*.egg-info
+*.egg
+dist
+
+# Virtual environments
+.venv
+venv
+env
+
+# Node / frontend build artefacts
+# node_modules at repo root (if any)
+node_modules
+# node_modules inside the frontend source tree — the Docker build
+# runs `npm ci` inside the container so these are never needed.
+frontend/node_modules
+
+# Exclude a top-level `build` or `dist` folder, but NOT frontend/build —
+# that directory is produced inside the container by the frontend-build stage
+# and does not exist in the source tree, so this rule has no practical effect
+# on the build output.
+build
+dist
+
+# Environment / secrets files
+.env
+.env.*
+*.env
+*.env.*
+
+# Editor and OS metadata
+.DS_Store
+*.swp
+*.swo
+.vscode
+.idea
+
+# Docker files (not needed inside the image)
+.dockerignore
