@@ -147,7 +147,17 @@ async def get_itineraries(user_id: str) -> list[Itinerary]:
         raw_itineraries: list[dict] = await get_itineraries_for_user(
             user_id=user_id
         )
-        return [Itinerary(**item) for item in raw_itineraries]
+        results: list[Itinerary] = []
+        for item in raw_itineraries:
+            try:
+                if "created_at" in item and not isinstance(item["created_at"], str):
+                    item["created_at"] = str(item["created_at"])
+                if "destination" not in item or "days" not in item:
+                    continue
+                results.append(Itinerary(**item))
+            except Exception:
+                continue
+        return results
     except HTTPException:
         raise
     except Exception as exc:
