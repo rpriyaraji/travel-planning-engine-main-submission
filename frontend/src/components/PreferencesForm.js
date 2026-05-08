@@ -61,8 +61,17 @@ export default function PreferencesForm({ onItineraryCreated }) {
       const newId = data.itinerary_id || data.id;
       setItineraryId(newId);
       setStatusMessage({ type: 'success', text: 'Itinerary created successfully!' });
+
+      // Fetch full itinerary data (with days) to render the timeline
       if (typeof onItineraryCreated === 'function') {
-        onItineraryCreated(data);
+        try {
+          const itineraryRes = await axios.get(`${API_BASE}/itineraries/demo-user`);
+          const all = itineraryRes.data;
+          const full = all.find((i) => i.id === newId) || all[all.length - 1];
+          onItineraryCreated(full || data);
+        } catch {
+          onItineraryCreated(data);
+        }
       }
     } catch (err) {
       const message =
