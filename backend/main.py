@@ -97,8 +97,7 @@ async def plan_trip(request: PlanRequest) -> PlanResponse:
         from services.firestore_service import save_itinerary  # type: ignore[import]
 
         itinerary_data: dict = await generate_itinerary(
-            preferences=request.preferences,
-            user_id=request.user_id,
+            preferences=request.preferences.model_dump(),
         )
         itinerary_id: str = await save_itinerary(
             user_id=request.user_id,

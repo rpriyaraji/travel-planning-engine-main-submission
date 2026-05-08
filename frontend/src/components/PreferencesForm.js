@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 
-const API_BASE = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000';
+// Empty string = same origin (works on Cloud Run where frontend+backend are co-located)
+const API_BASE = process.env.REACT_APP_API_BASE_URL || '';
 
 const INTERESTS_OPTIONS = [
   { value: 'culture', label: 'Culture' },
@@ -52,7 +53,10 @@ export default function PreferencesForm({ onItineraryCreated }) {
     setLoading(true);
 
     try {
-      const response = await axios.post(`${API_BASE}/plan`, form);
+      const response = await axios.post(`${API_BASE}/plan`, {
+        preferences: form,
+        user_id: 'demo-user',
+      });
       const data = response.data;
       const newId = data.itinerary_id || data.id;
       setItineraryId(newId);
