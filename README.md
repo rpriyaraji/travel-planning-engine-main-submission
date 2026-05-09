@@ -1,6 +1,6 @@
 # AI Travel Planner — Google Antigravity Hackathon
 
-An intelligent travel planning assistant that generates personalized, day-by-day itineraries using Vertex AI Gemini 1.5 Pro, enriched with real-world data from Google Maps, Natural Language, and Translation APIs — all served via a FastAPI backend and React frontend deployed on Cloud Run.
+An intelligent travel planning assistant that generates personalized, day-by-day itineraries using Vertex AI Gemini 2.0 Flash, enriched with real-world data from Google Maps, Natural Language, and Translation APIs — all served via a FastAPI backend and React frontend deployed on Cloud Run.
 
 ---
 
@@ -39,7 +39,7 @@ Pro        Geocoding  Entities
 
 | Service | Purpose |
 |---|---|
-| **Vertex AI Gemini 1.5 Pro** | Core itinerary generation via structured prompting |
+| **Vertex AI Gemini 2.0 Flash** | Core itinerary generation via structured prompting |
 | **Google Maps JS API** | Interactive destination map in the React frontend |
 | **Maps Places API** | Nearby tourist attractions, restaurants, landmarks |
 | **Maps Geocoding API** | Origin/destination lat-lng resolution |
@@ -62,7 +62,7 @@ Pro        Geocoding  Entities
 3. **Backend `/plan` endpoint** receives the request:
    - Calls **Translation API** to normalise any non-English input.
    - Calls **NLP API** to extract key entities and validate sentiment.
-   - Sends a structured prompt to **Gemini 1.5 Pro** requesting a JSON day-by-day itinerary.
+   - Sends a structured prompt to **Gemini 2.0 Flash** requesting a JSON day-by-day itinerary.
    - Enriches each day with **Places API** data (nearby attractions).
    - Calculates travel logistics via **Distance Matrix API**.
    - Persists the final itinerary to **Firestore** and returns the itinerary ID.

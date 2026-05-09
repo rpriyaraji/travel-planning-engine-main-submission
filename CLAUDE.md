@@ -7,7 +7,7 @@ GCP Project: promptwars-rr | Region: us-central1
 ## Stack
 - Backend: Python 3.11 / FastAPI / uvicorn
 - Frontend: React + Maps JS API
-- AI: Vertex AI Gemini 1.5 Pro (via google-cloud-aiplatform)
+- AI: Vertex AI Gemini 2.0 Flash (via google-cloud-aiplatform)
 - Data: Firestore + Cloud Storage cache
 - Secrets: ALL via Secret Manager (never hardcode)
 

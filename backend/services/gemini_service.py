@@ -66,7 +66,7 @@ Return ONLY a valid JSON object — no markdown fences, no extra text — with t
 
 Generate exactly {duration} day objects. Make each activity specific and actionable."""
 
-        model: GenerativeModel = GenerativeModel("gemini-1.5-pro")
+        model: GenerativeModel = GenerativeModel("gemini-2.0-flash-001")
         response = await model.generate_content_async(prompt)
         raw_text: str = response.text.strip()
 
