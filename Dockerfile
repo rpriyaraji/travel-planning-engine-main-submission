@@ -17,6 +17,9 @@ RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 COPY frontend/src ./src
 COPY frontend/public ./public
 
+ARG REACT_APP_MAPS_API_KEY=""
+ENV REACT_APP_MAPS_API_KEY=$REACT_APP_MAPS_API_KEY
+
 RUN npm run build
 
 # =============================================================================

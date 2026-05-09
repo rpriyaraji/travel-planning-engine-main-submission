@@ -10,6 +10,7 @@
 
 substitutions:
   _REGION: us-central1
+  _MAPS_API_KEY: ""
 
 steps:
   # ---------------------------------------------------------------------------
@@ -37,6 +38,8 @@ steps:
       - gcr.io/$PROJECT_ID/travel-planner:$COMMIT_SHA
       - -t
       - gcr.io/$PROJECT_ID/travel-planner:latest
+      - --build-arg
+      - REACT_APP_MAPS_API_KEY=$_MAPS_API_KEY
       - .
 
   # ---------------------------------------------------------------------------
