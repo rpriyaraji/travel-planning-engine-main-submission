@@ -1,11 +1,19 @@
-"""Gemini 1.5 Pro service for generating travel itineraries via Vertex AI."""
+"""Gemini 2.0 Flash service for generating travel itineraries."""
 
 import json
+import os
 import re
 from typing import Any
 
-import vertexai
-from vertexai.generative_models import GenerativeModel
+import google.generativeai as genai
+
+
+def _get_api_key() -> str:
+    try:
+        from backend.core.secrets import get_secret
+        return get_secret("gemini-api-key")
+    except Exception:
+        return os.environ.get("GEMINI_API_KEY", "")
 
 
 async def generate_itinerary(
@@ -13,25 +21,20 @@ async def generate_itinerary(
     project_id: str = "promptwars-rr",
     location: str = "us-central1",
 ) -> dict[str, Any]:
-    """Generate a structured day-by-day travel itinerary using Gemini 1.5 Pro.
+    """Generate a structured day-by-day travel itinerary using Gemini 2.0 Flash.
 
     Args:
-        preferences: A dict describing the traveller's preferences, e.g.
-            destination, duration, interests, budget, travel_style.
-        project_id: GCP project that hosts the Vertex AI endpoint.
-        location: GCP region for Vertex AI (default: us-central1).
+        preferences: A dict describing the traveller's preferences.
+        project_id: GCP project (kept for API compatibility).
+        location: GCP region (kept for API compatibility).
 
     Returns:
-        Parsed dict with keys:
-          - destination (str)
-          - days (list[dict]): each entry has day, morning, afternoon,
-            evening, tips keys.
-        On JSON parse failure returns:
-          - raw_text (str): the model's raw response.
-          - error (str): description of the parse failure.
+        Parsed dict with destination and days keys, or error dict on failure.
     """
+    raw_text: str = ""
     try:
-        vertexai.init(project=project_id, location=location)
+        api_key = _get_api_key()
+        genai.configure(api_key=api_key)
 
         destination: str = preferences.get("destination", "an unspecified destination")
         duration: int = int(preferences.get("duration_days", 3))
@@ -66,11 +69,10 @@ Return ONLY a valid JSON object — no markdown fences, no extra text — with t
 
 Generate exactly {duration} day objects. Make each activity specific and actionable."""
 
-        model: GenerativeModel = GenerativeModel("gemini-2.0-flash")
+        model = genai.GenerativeModel("gemini-2.0-flash")
         response = await model.generate_content_async(prompt)
-        raw_text: str = response.text.strip()
+        raw_text = response.text.strip()
 
-        # Strip optional markdown code fences if present
         cleaned: str = re.sub(r"^```(?:json)?\s*", "", raw_text)
         cleaned = re.sub(r"\s*```$", "", cleaned).strip()
 
@@ -79,11 +81,11 @@ Generate exactly {duration} day objects. Make each activity specific and actiona
 
     except json.JSONDecodeError as exc:
         return {
-            "raw_text": raw_text if "raw_text" in dir() else "",
+            "raw_text": raw_text,
             "error": f"Failed to parse Gemini response as JSON: {exc}",
         }
     except Exception as exc:
         return {
-            "raw_text": "",
+            "raw_text": raw_text,
             "error": f"Itinerary generation failed: {exc}",
         }

@@ -1,4 +1,5 @@
 fastapi
+google-generativeai
 uvicorn[standard]
 pydantic>=2.0
 google-cloud-secret-manager
